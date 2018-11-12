@@ -28,7 +28,7 @@ count = 0
 faces_train = np.zeros((2576, 1))
 faces_test = np.zeros((2576, 1))
 
-for i in range(0,520):
+for i in range(520):
     if count <8:
         faces_train = np.c_[faces_train, faces[:, i]] #attach first 8 vector image of each class to faces_train
         count += 1
@@ -61,7 +61,7 @@ plt.imshow(np.reshape(average_face, (46,56)).T, cmap = 'gist_gray') #print mean 
 plt.show()
 
 count = 0
-for i in range (0,2576): #number of non-zero eigenvalues
+for i in range (2576): #number of non-zero eigenvalues
     if eigvals[i] < 1:
         count += 1
 print("number of non-zero eigenvalues: %s" % (2576-count))
@@ -84,7 +84,7 @@ covariance_mat_ld = np.matmul(A.T, A)/416 #low dimensional covariance matrix
 eigvals_ld, eigvecs_ld = np.linalg.eigh(covariance_mat_ld) #returns eigenvalues in order and normalized eigenvectors in the eigenvalues order
 
 count = 0
-for i in range(0,416): #number of non-zero eigenvalues
+for i in range(416): #number of non-zero eigenvalues
     if eigvals_ld[i] < 1:
         count += 1
 print("number of non-zero eigenvalues: %s" % (416-count))
@@ -110,15 +110,15 @@ omega = np.zeros((416,1))
 eigvecs_new = np.zeros((2576,416))
 
 #calculate u = Av and normalize u
-for i in range(0,416):
+for i in range(416):
     eigvecs_new[:,i] = np.matmul(A,eigvecs_ld[:,i])
     eigvecs_new[:,i] = eigvecs_new[:,i] / np.linalg.norm(eigvecs_new) #normalization
     
-for i in range(0,416):
-    omega[i,0] = np.matmul(A[:,45].T,eigvecs_new[:,i]) #change A column value to change image
+for i in range(416): #calculat omega
+    omega[i,0] = np.matmul(A[:,3].T,eigvecs_new[:,i]) #change A column value to change image
 
 #print original face
-face = faces_train[:,45] #change A column value to change image #switch row with column with different partition alghoritm
+face = faces_train[:,3] #change A column value to change image #switch row with column with different partition alghoritm
 plt.imshow(np.reshape(face, (46,56)).T, cmap = 'gist_gray')
 plt.xticks([]), plt.yticks([])
 plt.show()
@@ -135,10 +135,33 @@ plt.xticks([]), plt.yticks([])
 plt.show()
 
 #%% Q2.b
+face_new = faces_test[:, 3] #get an image from the test set
+face_minus_average = face_new - average_face
 
-face_new = faces_test[:, 1] #get an image from the test set
-average_face_new = faces_train.mean(1) #mean face
+plt.imshow(np.reshape(face_new, (46,56)).T, cmap = 'gist_gray')
+plt.xticks([]), plt.yticks([])
+plt.show()
 
-for i in range(0,416):
-    omega[i,0] = np.matmul(average_face_new.T,eigvecs_new[:,i])
+omega_all = np.zeros((416,416))
+for i in range(416): #calculate omega matrix with all the omegas of the training set
+    for j in range(416):
+        omega_all[j,i] = np.matmul(A[:,i].T,eigvecs_new[:,j]) 
 
+
+omega_new = np.zeros((416,1))
+for i in range(0,416): #calculate omega of test image
+    omega_new[i,0] = np.matmul(face_minus_average.T,eigvecs_new[:,i])
+
+get_the_min = omega_new - omega_all
+
+min_distance = 0
+for i in range(416):
+    distance = np.linalg.norm(get_the_min[:,i])
+    if distance <=  np.linalg.norm(get_the_min[:,min_distance]):
+        min_distance = i
+        
+print(min_distance)
+
+plt.imshow(np.reshape(faces_train[:,min_distance], (46,56)).T, cmap = 'gist_gray')
+plt.xticks([]), plt.yticks([])
+plt.show()
