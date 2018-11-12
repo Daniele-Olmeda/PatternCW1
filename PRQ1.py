@@ -5,6 +5,10 @@ Spyder Editor
 This is a temporary script file.
 """
 
+# git add .
+# git commit -m "version 02"
+# git push
+
 #%%
 import scipy.io as sio
 import numpy as np
@@ -44,6 +48,8 @@ average_face_mat = np.tile(average_face, (416,1)).T #copy the mean face vector f
 A = faces_train - average_face_mat
 covariance_mat = np.matmul(A, A.T)/416
 eigvals, eigvecs = np.linalg.eigh(covariance_mat) #returns eigenvalues in order and normalized eigenvectors in the eigenvalues order
+eigvals = np.flip(eigvals, 0) #flip eigenvalues vector
+eigvecs = np.flip(eigvecs, 1) #flip eigenvectors matrix
 
 #normalize eigenvectors
 #eigvecs_norm = np.divide(eigvecs, np.linalg.norm(eigvecs, axis = 0))
@@ -60,8 +66,6 @@ for i in range (0,2576): #number of non-zero eigenvalues
         count += 1
 print("number of non-zero eigenvalues: %s" % (2576-count))
 
-eigvals = np.flip(eigvals, 0) #flip eigenvalues vector
-eigvecs = np.flip(eigvecs, 1) #flip eigenvectors matrix
 
 plt.title('eigenvals values - log')
 plt.semilogy(abs(eigvals[:])) #graph of eigenvalues values (log)
@@ -90,12 +94,12 @@ eigvecs_ld = np.flip(eigvecs_ld, 1) #flip eigenvectors_ld matrix
 
 plt.semilogy(abs(eigvals_ld[:])) #graph of eigenvalues_ld values (log)
 plt.grid(True)
-plt.title('eigenvals_lw values - log')
+plt.title('eigenvals_ld values - log')
 plt.show()
     
 plt.plot(abs(eigvals_ld[:])) #graph of eigenvalues_ld values (linear)
 plt.grid(True)
-plt.title('eigenvals_lw values - linear')
+plt.title('eigenvals_ld values - linear')
 plt.show()
 
 
@@ -111,10 +115,10 @@ for i in range(0,416):
     eigvecs_new[:,i] = eigvecs_new[:,i] / np.linalg.norm(eigvecs_new) #normalization
     
 for i in range(0,416):
-    omega[i,0] = np.matmul(A[:,0].T,eigvecs_new[:,i])
+    omega[i,0] = np.matmul(A[:,45].T,eigvecs_new[:,i]) #change A column value to change image
 
 #print original face
-face = faces[:,0] #switch row with column with different partition alghoritm
+face = faces_train[:,45] #change A column value to change image #switch row with column with different partition alghoritm
 plt.imshow(np.reshape(face, (46,56)).T, cmap = 'gist_gray')
 plt.xticks([]), plt.yticks([])
 plt.show()
@@ -129,3 +133,12 @@ face_r = average_face + sum
 plt.imshow(np.reshape(face_r, (46,56)).T, cmap = 'gist_gray')
 plt.xticks([]), plt.yticks([])
 plt.show()
+
+#%% Q2.b
+
+face_new = faces_test[:, 1] #get an image from the test set
+average_face_new = faces_train.mean(1) #mean face
+
+for i in range(0,416):
+    omega[i,0] = np.matmul(average_face_new.T,eigvecs_new[:,i])
+
