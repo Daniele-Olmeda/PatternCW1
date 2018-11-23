@@ -13,9 +13,10 @@ This is a temporary script file.
 import scipy.io as sio
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
 import time
+import pandas as pd
+import seaborn as sn
+from sklearn.metrics import confusion_matrix
 
 
 #%% import faces and labels
@@ -48,16 +49,27 @@ faces_train = faces_train[:,1:] #pop first zero vector
 average_face = faces_train.mean(1) #mean face
 average_face_mat = np.tile(average_face, (416,1)).T #copy the mean face vector for each column in the matrix
 A = faces_train - average_face_mat
+
+start = time.time() #start timer
 covariance_mat = np.matmul(A, A.T)/416
 eigvals, eigvecs = np.linalg.eigh(covariance_mat) #returns eigenvalues in order and normalized eigenvectors in the eigenvalues order
 eigvals = np.flip(eigvals, 0) #flip eigenvalues vector
 eigvecs = np.flip(eigvecs, 1) #flip eigenvectors matrix
-
+end = time.time() #end timer
+print(end - start)
 
 #normalize eigenvalues
-#eigvals_norm = eigvals / np.linalg.norm(eigvals)
+eigvals_norm = eigvals / np.linalg.norm(eigvals)
+eigvals_divided_bu_sum = eigvals/np.sum(eigvals)
+sum_first_values_eigvalues= np.sum(eigvals_divided_bu_sum[:4])
+sum_last_values_eigvalues = np.sum(eigvals_divided_bu_sum[411:415])
 
 plt.imshow(np.reshape(average_face, (46,56)).T, cmap = 'gist_gray') #print mean face
+plt.xticks([]),plt.yticks([])
+plt.show()
+
+plt.imshow(np.reshape(eigvecs[:,499], (46,56)).T, cmap = 'gist_gray') #print mean face
+plt.xticks([]),plt.yticks([])
 plt.show()
 
 count = 0
@@ -65,6 +77,7 @@ for i in range (2576): #number of non-zero eigenvalues
     if eigvals[i] < 1:
         count += 1
 print("number of non-zero eigenvalues: %s" % (2576-count))
+#print(np.linalg.matrix_rank(covariance_mat))
 
 
 plt.title('eigenvals values - log')
@@ -80,8 +93,13 @@ plt.show()
 #sum elementwise eigval, divide each element for the total sum (normalize) and see the influence of each eigevalue
 
 #%% Q1.b
+start = time.time() #start timer
 covariance_mat_ld = np.matmul(A.T, A)/416 #low dimensional covariance matrix
 eigvals_ld, eigvecs_ld = np.linalg.eigh(covariance_mat_ld) #returns eigenvalues in order and normalized eigenvectors in the eigenvalues order
+eigvals_ld = np.flip(eigvals_ld, 0) #flip eigenvalues_ld vector
+eigvecs_ld = np.flip(eigvecs_ld, 1) #flip eigenvectors_ld matrix
+end = time.time() #end timer
+print(end - start)
 
 count = 0
 for i in range(416): #number of non-zero eigenvalues
@@ -89,8 +107,7 @@ for i in range(416): #number of non-zero eigenvalues
         count += 1
 print("number of non-zero eigenvalues: %s" % (416-count))
 
-eigvals_ld = np.flip(eigvals_ld, 0) #flip eigenvalues_ld vector
-eigvecs_ld = np.flip(eigvecs_ld, 1) #flip eigenvectors_ld matrix
+
 
 plt.semilogy(abs(eigvals_ld[:])) #graph of eigenvalues_ld values (log)
 plt.grid(True)
@@ -115,16 +132,16 @@ for i in range(416):
     eigvecs_new[:,i] = eigvecs_new[:,i] / np.linalg.norm(eigvecs_new) #normalization
     
 for i in range(416): #calculat omega
-    omega[i,0] = np.matmul(A[:,15].T,eigvecs_new[:,i]) #change A column value to change image
+    omega[i,0] = np.matmul(A[:,213].T,eigvecs_new[:,i]) #change A column value to change image
 
 #print original face
-face = faces_train[:,15] #change faces_train column value to change image
+face = faces_train[:,213] #change faces_train column value to change image
 plt.imshow(np.reshape(face, (46,56)).T, cmap = 'gist_gray')
 plt.xticks([]), plt.yticks([])
 plt.show()
 
 sum = 0
-for i in range(416): #face reconstruction
+for i in range(415): #face reconstruction
     to_add = omega[i,0]*eigvecs_new[:,i]
     sum += to_add
 face_r = average_face + sum
@@ -135,6 +152,7 @@ plt.xticks([]), plt.yticks([])
 plt.show()
 
 #%% Q2.b NN classifier
+faces_test = faces_test.reshape(2576,104)
 face_new = faces_test[:, 45] #get an image from the test set
 face_minus_average = face_new - average_face #get the phi of the image
 
@@ -167,6 +185,8 @@ start = time.time() #start timer
 
 number_of_basis = 416 #number of eigenvalues
 accuracy = 0
+true_NN = np.zeros((104))
+predicted_NN = np.zeros((104)) 
 
 omega_all = np.zeros((number_of_basis,416))
 omega_all[:,:] = np.matmul(eigvecs_new[:,0:number_of_basis].T,A[:,:]) 
@@ -184,12 +204,21 @@ for k in range(104):
             
     if np.argmin(distance)//8 == k//2: #check if the image found is from the right class
         accuracy+= 1
+        true_NN[k] = k//2
+    
+    predicted_NN[k] = k//2
 
 end = time.time() #end timer
 
 print(accuracy/104*100)
 print(end - start)
 
+confusion_NN = confusion_matrix(true_NN, predicted_NN) #calculate confusion matrix
+
+df_cm = pd.DataFrame(confusion_NN, range(52),range(52))
+plt.figure(figsize = (10,7))
+sn.set(font_scale=1.4)#for label size
+sn.heatmap(df_cm, cmap='Greys')
 #%% Q2.b alternative method
 
 start = time.time() #start timer
@@ -228,6 +257,7 @@ faces_test_phi = np.zeros((52,2576,1))
 reconstructed = np.zeros((52,2576,1))
 faces_test = faces_test.reshape(1,2576,104)
 difference = np.zeros((52))
+
 true = np.zeros((104))
 predicted = np.zeros((104)) 
 
@@ -279,9 +309,12 @@ end = time.time() #end timer
 print(accuracy_AM/104*100)
 print(end - start)
 
-confusion = confusion_matrix(true, predicted) #calculate confusion matrix
+confusion_AM = confusion_matrix(true, predicted) #calculate confusion matrix
 
-    
+df_cm = pd.DataFrame(confusion_AM, range(52),range(52))
+plt.figure(figsize = (10,7))
+sn.set(font_scale=1.4)#for label size
+sn.heatmap(df_cm, cmap='Greys')
     
 
             
